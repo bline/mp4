@@ -467,40 +467,42 @@ MP4Tag.parse = function(handle, callback) {
   readAtoms(0, function (err, atoms) {
     if (!err) {
       var ilst = findAtom(atoms, ['moov', 'udta', 'meta', 'ilst']);
-      readAllMetadata(ilst.children, atom_names, function (err, datum) {
-        if (!err) {
-          var tags = {};
+      if (!ilst) {
+        callback(null, {})
+      } else {
+        readAllMetadata(ilst.children, atom_names, function (err, datum) {
+          if (!err) {
+            var tags = {};
 
-          field_names.forEach(function (field, index) {
-            var atom_name = translateToAtomName(field),
-              block = datum[atom_name];
+            field_names.forEach(function (field, index) {
+              var atom_name = translateToAtomName(field),
+                block = datum[atom_name];
 
-            if (block) {
-              tags[field] = block.value;
+              if (block) {
+                tags[field] = block.value;
+              }
+
+            });
+            // decorate M4A tags
+            if (tags.date) {
+              tags.year = (new Date(Date.parse(tags.date)))
+                .getUTCFullYear()
+            } else {
+              tags.year = null;
             }
 
-          });
-          // decorate M4A tags
-          if (tags.date) {
-            tags.year = (new Date(Date.parse(tags.date)))
-              .getUTCFullYear()
-          }
-          else {
-            tags.year = null;
+            if (tags.tracknumber) {
+              tags.track = tags.tracknumber.join("/");
+            } else {
+              tags.track = null;
+            }
+            callback(null, tags);
+          } else {
+            callback(err);
           }
 
-          if (tags.tracknumber) {
-            tags.track = tags.tracknumber.join("/");
-          }
-          else {
-            tags.track = null;
-          }
-          callback(null, tags);
-        } else {
-          callback(err);
-        }
-
-      });
+        });
+      }
     } else {
       callback(err);
     }
